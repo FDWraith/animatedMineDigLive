@@ -21,6 +21,14 @@ from draw import *
   jdyrlandweaver
   ==================== """
 def first_pass( commands ):
+    returnVal = { }
+    for command in commands:
+        if command[0] == "basename":
+            returnVal['basename'] = command[1]
+        elif command[0] == "frames":
+            returnVal['num_frames'] = command[2]
+        elif command[0] == "vary":
+            
     pass
 
 
