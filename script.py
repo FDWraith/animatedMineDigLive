@@ -28,8 +28,12 @@ def first_pass( commands ):
         elif command[0] == "frames":
             returnVal['num_frames'] = command[2]
         elif command[0] == "vary":
-            
-    pass
+            if 'num_frames' not in returnVal.keys():
+                exit
+        if 'basename' not in returnVal.keys():
+            print "Basename not found, using default ( \"animation\" )"
+            returnVal['basename'] = 'animation'
+    return returnVal
 
 
 """======== second_pass( commands ) ==========
@@ -50,7 +54,16 @@ def first_pass( commands ):
   appropirate value. 
   ===================="""
 def second_pass( commands, num_frames ):
-    pass
+    knobs = [ ]
+    varyCommands = [ command for command in commands if command[0] == "vary" ]
+    knobNames = ( command[1] for command in varyCommands )
+
+    knobValues = { }
+    for varyCommand in varyCommands:
+        if varyCommand[1] not in knobValues.keys():
+            knobValues[ varyCommand[1] ] = []
+        
+    
 
 
 def run(filename):
