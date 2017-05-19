@@ -54,17 +54,26 @@ def first_pass( commands ):
   appropirate value. 
   ===================="""
 def second_pass( commands, num_frames ):
-    knobs = [ ]
     varyCommands = [ command for command in commands if command[0] == "vary" ]
     knobNames = ( command[1] for command in varyCommands )
 
     knobValues = { }
     for varyCommand in varyCommands:
         if varyCommand[1] not in knobValues.keys():
-            knobValues[ varyCommand[1] ] = []
-        
-    
-
+            knobValues[ varyCommand[1] ] = [ 0 for num in range(num_frames) ]
+        if varyCommand[2] < 0 or varyCommand[2] > ( num_frames - 1 ) or varyCommand[3] > ( num_frames - 1 ):
+            print "Vary Command out of range for %s"%( varyCommand[2] )
+            exit
+        frame = varyCommand[2]
+        finalFrame = varyCommand[3]
+        diff = ( frame - finalFrame ) / abs( frame - finalFrame )
+        knobChange = ( varyCommand[5] - varyCommand[4] ) / ( abs(frame - finalFrame) + 1 )
+        currentVal = varyCommand[4]
+        while( frame != finalFrame ):
+            knobValues[ varyCommand[1] ][ frame ] = currentVal
+            frame += diff
+            currentVal += knobChange
+    return ( knobNames, knobValues )
 
 def run(filename):
     """
@@ -87,7 +96,93 @@ def run(filename):
     screen = new_screen()
     tmp = []
     step = 0.1
-    for command in commands:
+
+    
+    #Animation Stuff
+    info = first_pass( commands ):
+    ANIMATION = True if 'num_frames' in info else False
+    basename = info['basename']
+    
+    if ANIMATION:
+        num_frames = info['num_frames'] if ANIMATION else 1
+        knobInfo = second_pass( commands, num_frames )
+        knobNames = knobInfo[0]
+        knobValues = knobInfo[1]
+        
+        for frame in range( num_frames ):
+            savefile = "/anim/%s%s"%(basename, tres(frame) )
+            knobTable = { knobName: knobValue  for knobName in knobNames for  knobValue in [ knobValues[knobName][frame] ] }
+    
+            for command in commands:
+                print command
+                c = command[0]
+                args = command[1:]
+                
+                if c == 'box':
+                    add_box(tmp,
+                            args[0], args[1], args[2],
+                            args[3], args[4], args[5])
+                    matrix_mult( stack[-1], tmp )
+                    draw_polygons(tmp, screen, color)
+                    tmp = []
+                elif c == 'sphere':
+                    add_sphere(tmp,
+                               args[0], args[1], args[2], args[3], step)
+                    matrix_mult( stack[-1], tmp )
+                    draw_polygons(tmp, screen, color)
+                    tmp = []
+                elif c == 'torus':
+                    add_torus(tmp,
+                              args[0], args[1], args[2], args[3], args[4], step)
+                    matrix_mult( stack[-1], tmp )
+                    draw_polygons(tmp, screen, color)
+                    tmp = []
+                elif c == 'move':
+                    tmp = make_translate(args[0], args[1], args[2])
+                    if args[3]:
+                        if args[3] not in knobTable:
+                            print "%s is used, but not varied"%( args[3] )
+                        else:
+                            scalar_mult( tmp, knobTable[ args[3] ])
+                    matrix_mult(stack[-1], tmp)
+                    stack[-1] = [x[:] for x in tmp]
+                    tmp = []
+                elif c == 'scale':
+                    tmp = make_scale(args[0], args[1], args[2])
+                    if args[3]:
+                        if args[3] not in knobTable:
+                            print "%s is used, but not varied"%( args[3] )
+                        else:
+                            scalar_mult( tmp, knobTable[ args[3] ])
+                    matrix_mult(stack[-1], tmp)
+                    stack[-1] = [x[:] for x in tmp]
+                    tmp = []
+                elif c == 'rotate':
+                    theta = args[1] * (math.pi/180)
+                    if args[0] == 'x':
+                        tmp = make_rotX(theta)
+                    elif args[0] == 'y':
+                        tmp = make_rotY(theta)
+                    else:
+                        tmp = make_rotZ(theta)
+                    if args[2]:
+                        if args[2] not in knobTable:
+                            print "%s is used, but not varied"%( args[2] )
+                        else:
+                            scalar_mult( tmp, knobTable[ args[2] ])
+                    matrix_mult( stack[-1], tmp )
+                    stack[-1] = [ x[:] for x in tmp]
+                    tmp = []
+                elif c == 'push':
+                    stack.append([x[:] for x in stack[-1]] )
+                elif c == 'pop':
+                    stack.pop()
+                elif c == 'display':
+                    display(screen)
+                elif c == 'save':
+                    save_extension(screen, args[0])
+    else:
+        for command in commands:
         print command
         c = command[0]
         args = command[1:]
@@ -140,3 +235,13 @@ def run(filename):
             display(screen)
         elif c == 'save':
             save_extension(screen, args[0])
+
+def tres( num ):
+    if num < 10:
+        return "00%d"%(num)
+    if num < 100:
+        return "0%d"%(num)
+    if num < 1000:
+        return "%d"%(num)
+    print( "Frame Size too large" )
+    return ""
